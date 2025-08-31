@@ -1,15 +1,21 @@
-from typing import Dict, Any
+import hashlib
+from typing import Dict, List
 
-def validate_cross_chain_message(message: Dict[str, Any], oracle_responses: Dict[str, Any], threshold: int) -> bool:
-    valid_responses = 0
-    for oracle, response in oracle_responses.items():
-        if response["signature"] and verify_signature(message["hash"], response["signature"], oracle["publicKey"]):
-            if response["data"] == message["data"]:
-                valid_responses +=1
+def validate_crosschain_message(message: Dict, oracles: List[str], threshold: int) -> bool:
+    message_hash = hashlib.sha256(str(message).encode()).hexdigest()
+    valid_signatures = 0
+    for oracle in oracles:
+        # Replace with actual signature verification logic
+        signature = get_oracle_signature(oracle, message_hash) 
+        if verify_signature(signature, message_hash, oracle):
+            valid_signatures += 1
+    return valid_signatures >= threshold
 
-    return valid_responses >= threshold
+def get_oracle_signature(oracle: str, message_hash: str) -> str:
+    #Simulate fetching signature from oracle; Replace with actual oracle interaction
+    signatures = {"oracle1":"sig1", "oracle2":"sig2", "oracle3":"sig3"}
+    return signatures.get(oracle,"")
 
-def verify_signature(message_hash: str, signature: str, public_key: str) -> bool:
-    # Replace with actual signature verification logic using a suitable library (e.g., cryptography)
-    # This is a placeholder.
-    return True if message_hash == "test_hash" and signature == "test_signature" and public_key == "test_key" else False
+def verify_signature(signature: str, message_hash: str, oracle: str) -> bool:
+    # Replace with actual signature verification using oracle's public key
+    return signature != "" and oracle in ["oracle1", "oracle2", "oracle3"]
