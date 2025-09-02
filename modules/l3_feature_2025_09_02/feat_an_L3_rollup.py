@@ -1,17 +1,21 @@
 import hashlib
-from hashlib import sha256
+from ellipticcurve.privateKey import PrivateKey
+from ellipticcurve.publicKey import PublicKey
 
-def verify_zk_proof(commitment, proof, public_key, challenge):
-    inner_hash = sha256(commitment + proof).hexdigest()
-    outer_hash = sha256(inner_hash + public_key + challenge).hexdigest()
-    return outer_hash == "a_predefined_target_hash"
+def verify_zk_proof(tx, proof, pubkey_bytes):
+    pubkey = PublicKey.fromString(pubkey_bytes)
+    tx_hash = hashlib.sha256(tx.encode()).digest()
+    r, s = proof
+    sig = pubkey.verify(tx_hash, (r,s))
+    return sig
 
 
-commitment = "some_commitment_data".encode('utf-8')
-proof = "some_zk_proof_data".encode('utf-8')
-public_key = "some_public_key_data".encode('utf-8')
-challenge = "some_challenge_data".encode('utf-8')
+tx = "transfer 10 ETH from 0x123 to 0x456"
+proof = (1234567890, 9876543210) #replace with actual proof from zk-SNARK
+privkey = PrivateKey()
+pubkey_bytes = privkey.publicKey().toString()
 
-verification_result = verify_zk_proof(commitment, proof, public_key, challenge)
+verified = verify_zk_proof(tx, proof, pubkey_bytes)
 
-print(verification_result)
+print(verified)
+
