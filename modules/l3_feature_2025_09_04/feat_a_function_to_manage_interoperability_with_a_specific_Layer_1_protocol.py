@@ -1,26 +1,31 @@
-from eth_account import Account
-from web3 import Web3
+import requests
 
-def interact_with_ethereum(private_key, contract_address, abi, function_name, *args):
-    w3 = Web3(Web3.HTTPProvider('YOUR_ETHEREUM_NODE_URL'))
-    account = Account.from_key(private_key)
-    contract = w3.eth.contract(address=contract_address, abi=abi)
-    nonce = w3.eth.getTransactionCount(account.address)
-    transaction = contract.functions[function_name](*args).buildTransaction({
-        'chainId': 1,  # Replace with appropriate chain ID
-        'gas': 5000000, # Adjust as needed
-        'gasPrice': w3.eth.gas_price,
-        'nonce': nonce,
-    })
-    signed_txn = w3.eth.account.signTransaction(transaction, private_key)
-    tx_hash = w3.eth.sendRawTransaction(signed_txn.rawTransaction)
-    tx_receipt = w3.eth.waitForTransactionReceipt(tx_hash)
-    return tx_receipt
+class Layer1Interop:
+    def __init__(self, api_url):
+        self.api_url = api_url
 
-# Example usage (replace with your actual values):
-private_key = 'YOUR_PRIVATE_KEY'
-contract_address = 'YOUR_CONTRACT_ADDRESS'
-abi = [{'inputs': [], 'name': 'myFunction', 'outputs': [{'internalType': 'uint256', 'name': '', 'type': 'uint256'}], 'stateMutability': 'pure', 'type': 'function'}]
-receipt = interact_with_ethereum(private_key, contract_address, abi, 'myFunction')
-print(receipt)
+    def get_balance(self, address):
+        response = requests.get(f"{self.api_url}/balance/{address}")
+        response.raise_for_status()
+        return response.json()["balance"]
 
+    def send_transaction(self, sender, receiver, amount, private_key):
+        payload = {
+            "sender": sender,
+            "receiver": receiver,
+            "amount": amount,
+            "signature": self._sign_transaction(private_key, sender, receiver, amount)
+        }
+        response = requests.post(f"{self.api_url}/transaction", json=payload)
+        response.raise_for_status()
+        return response.json()["transaction_hash"]
+
+    def _sign_transaction(self, private_key, sender, receiver, amount):
+        # Replace with actual signing logic using appropriate library
+        # This is a placeholder
+        return "mock_signature"
+
+    def get_transaction_status(self, transaction_hash):
+        response = requests.get(f"{self.api_url}/transaction/{transaction_hash}")
+        response.raise_for_status()
+        return response.json()["status"]
