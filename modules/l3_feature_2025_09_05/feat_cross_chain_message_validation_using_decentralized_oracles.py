@@ -1,34 +1,27 @@
 import hashlib
-from typing import Dict, List
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
 
-def validate_cross_chain_message(message: Dict, oracles: List[str], threshold: int) -> bool:
-    message_hash = hashlib.sha256(str(message).encode()).hexdigest()
-    oracle_responses = {}
-    for oracle in oracles:
-        # Simulate fetching response from decentralized oracle
-        response = simulate_oracle_response(oracle, message_hash)
-        oracle_responses[oracle] = response
+def validate_cross_chain_message(message, source_chain_id, oracle_signatures, oracle_public_keys):
+    message_hash = hashlib.sha256(message.encode()).digest()
+    combined_signature = b''
+    for sig in oracle_signatures:
+        combined_signature += sig
+    combined_hash = hashlib.sha256(combined_signature).digest()
+    verifier = ec.ECDSA(hashes.SHA256())
+    for i, pub_key in enumerate(oracle_public_keys):
+        try:
+            verifier.verify(oracle_signatures[i], combined_hash, pub_key)
+        except:
+            return False
+    return True
 
-    valid_responses = sum(1 for response in oracle_responses.values() if response == "valid")
-    return valid_responses >= threshold
+#Example Usage (replace with actual data):
+message = "This is a cross-chain message"
+source_chain_id = "ChainA"
+oracle_signatures = [b'signature1',b'signature2',b'signature3']
+oracle_public_keys = [ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),b'pubkey1'), ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),b'pubkey2'), ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),b'pubkey3')]
 
-def simulate_oracle_response(oracle: str, message_hash: str) -> str:
-    # Simulate oracle's validation logic, replace with actual oracle interaction
-    # This could involve making API calls, checking signatures, etc.
-    if oracle == "oracle_1" and message_hash == "test_hash":
-      return "valid"
-    elif oracle == "oracle_2" and message_hash == "test_hash":
-      return "valid"
-    elif oracle == "oracle_3" and message_hash == "test_hash":
-      return "invalid"
-    else:
-        return "invalid"
-
-
-#Example Usage
-message = {"sender": "chainA", "receiver": "chainB", "data": "test_data"}
-oracles = ["oracle_1", "oracle_2", "oracle_3"]
-threshold = 2
-is_valid = validate_cross_chain_message(message, oracles, threshold)
-print(is_valid) # True if at least 2 oracles confirm the message
+is_valid = validate_cross_chain_message(message, source_chain_id, oracle_signatures, oracle_public_keys)
+print(is_valid)
 
