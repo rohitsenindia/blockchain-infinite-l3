@@ -1,25 +1,23 @@
-import math
+from typing import Dict, Tuple
 
-def estimate_tx_fee(tx_size_bytes, base_fee_gwei, gas_price_gwei, priority_fee_gwei=0):
-    gas_used = math.ceil(tx_size_bytes / 1024) + 21000  # Assume some base gas + gas per KB
-    total_fee_gwei = (gas_used * gas_price_gwei) + priority_fee_gwei + base_fee_gwei
-    return total_fee_gwei * 10**-9
-
-def estimate_tx_fee_eth(tx_size_bytes, gas_price_gwei):
-    return estimate_tx_fee(tx_size_bytes, 0, gas_price_gwei)
+def estimate_transaction_fee(transaction: Dict, base_fee: float, gas_prices: Dict[str, float]) -> float:
+    gas_used = transaction['gasUsed']
+    gas_price_per_unit = gas_prices.get(transaction['gasType'], base_fee)
+    return gas_used * gas_price_per_unit
 
 
-def estimate_tx_fee_custom(tx_size_bytes, base_fee_gwei, gas_price_multiplier=1.2):
-    gas_price_gwei = base_fee_gwei * gas_price_multiplier
-    return estimate_tx_fee(tx_size_bytes, base_fee_gwei, gas_price_gwei)
+def get_gas_prices(api_url: str) -> Dict[str, float]:
+    # Simulate fetching gas prices from an API; replace with actual API call
+    mock_gas_prices = {'fast': 0.0001, 'average': 0.00008, 'slow': 0.00005}
+    return mock_gas_prices
 
-tx_size = 1024 # example tx size in bytes
-base_fee = 20 # gwei
-gas_price = 50 # gwei
+def main():
+    transaction = {'gasUsed': 100000, 'gasType': 'average'}
+    base_fee = 0.00005
+    gas_prices = get_gas_prices("https://example.com/gasprices")
+    fee = estimate_transaction_fee(transaction, base_fee, gas_prices)
+    print(f"Estimated transaction fee: {fee}")
 
 
-eth_fee = estimate_tx_fee_eth(tx_size, gas_price)
-custom_fee = estimate_tx_fee_custom(tx_size, base_fee)
-
-print(f"Estimated ETH transaction fee: {eth_fee:.6f} ETH")
-print(f"Estimated custom transaction fee: {custom_fee:.6f} ETH")
+if __name__ == "__main__":
+    main()
