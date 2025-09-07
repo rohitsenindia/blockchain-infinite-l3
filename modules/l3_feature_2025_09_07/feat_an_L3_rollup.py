@@ -1,22 +1,25 @@
 import hashlib
 from ellipticcurve.privateKey import PrivateKey
-from ellipticcurve.publicKey import PublicKey
 
-def verify_zk_proof(proof, public_key_bytes, commitment, transaction_hash):
-    public_key = PublicKey.fromBytes(public_key_bytes)
+def verify_zk_proof(proof, public_key, commitment, message):
     r, s = proof
-    signature = public_key.sign(transaction_hash + commitment)
-    return signature == (r,s)
+    try:
+        pk = PrivateKey()
+        pk.publicKey().verify(hashlib.sha256(commitment + message).digest(), (r, s))
+        return True
+    except Exception:
+        return False
 
 
-# Example usage (replace with actual values from rollup)
+# Example usage (replace with actual proof, keys, and data)
 private_key = PrivateKey()
-public_key_bytes = private_key.publicKey().toBytes()
-commitment = hashlib.sha256(b"transaction data").digest()
-transaction_hash = hashlib.sha256(b"transaction hash").digest()
-proof = private_key.sign(transaction_hash + commitment)
+public_key = private_key.publicKey()
+message = b"This is a test message"
+commitment = b"This is a test commitment"
+signature = private_key.sign(hashlib.sha256(commitment + message).digest())
 
-verification_result = verify_zk_proof(proof, public_key_bytes, commitment, transaction_hash)
+proof = (signature.r, signature.s)
 
-print(verification_result)
+is_valid = verify_zk_proof(proof, public_key, commitment, message)
 
+print(is_valid)
