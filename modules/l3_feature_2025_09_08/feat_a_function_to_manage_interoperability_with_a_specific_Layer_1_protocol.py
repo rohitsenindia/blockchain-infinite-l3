@@ -1,30 +1,26 @@
-from web3 import Web3
+import requests
 
-class Layer1Interoperability:
-    def __init__(self, provider_url):
-        self.w3 = Web3(Web3.HTTPProvider(provider_url))
-        if not self.w3.isConnected():
-            raise ConnectionError("Failed to connect to Layer 1 provider.")
+class Layer1Interop:
+    def __init__(self, api_url):
+        self.api_url = api_url
 
     def get_balance(self, address):
-        return self.w3.eth.getBalance(address)
+        response = requests.get(f"{self.api_url}/balance/{address}")
+        response.raise_for_status()
+        return response.json()['balance']
 
-    def send_transaction(self, to_address, value, private_key, nonce=None):
-        if nonce is None:
-            nonce = self.w3.eth.getTransactionCount(self.w3.eth.defaultAccount)
-        txn = {
-            'nonce': nonce,
-            'to': to_address,
-            'value': value,
-            'gas': 21000,
-            'gasPrice': self.w3.eth.gasPrice
+    def send_transaction(self, from_address, to_address, amount, private_key):
+        payload = {
+            "from": from_address,
+            "to": to_address,
+            "amount": amount,
+            "private_key": private_key
         }
-        signed_txn = self.w3.eth.account.signTransaction(txn, private_key)
-        txn_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
-        return txn_hash.hex()
+        response = requests.post(f"{self.api_url}/transaction", json=payload)
+        response.raise_for_status()
+        return response.json()['transaction_hash']
 
-    def get_block_number(self):
-        return self.w3.eth.blockNumber
-
-    def set_default_account(self, address):
-        self.w3.eth.defaultAccount = address
+    def get_transaction_status(self, transaction_hash):
+        response = requests.get(f"{self.api_url}/transaction/{transaction_hash}")
+        response.raise_for_status()
+        return response.json()['status']
