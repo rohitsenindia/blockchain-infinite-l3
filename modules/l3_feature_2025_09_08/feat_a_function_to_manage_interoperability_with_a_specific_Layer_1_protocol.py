@@ -1,34 +1,30 @@
-import requests
+from web3 import Web3
 
-def interact_with_solana(endpoint, method, params=None):
-    headers = {'Content-Type': 'application/json'}
-    url = f"{endpoint}{method}"
-    if method == '/tx':
-        response = requests.post(url, headers=headers, json=params)
-    elif method == '/account':
-        response = requests.get(url, headers=headers, params=params)
-    else:
-        return {"error": "unsupported method"}
+class Layer1Interoperability:
+    def __init__(self, provider_url):
+        self.w3 = Web3(Web3.HTTPProvider(provider_url))
+        if not self.w3.isConnected():
+            raise ConnectionError("Failed to connect to Layer 1 provider.")
 
-    if response.status_code >= 200 and response.status_code < 300:
-        try:
-            return response.json()
-        except:
-            return {"error": "invalid json response"}
-    else:
-        return {"error": response.text}
+    def get_balance(self, address):
+        return self.w3.eth.getBalance(address)
 
+    def send_transaction(self, to_address, value, private_key, nonce=None):
+        if nonce is None:
+            nonce = self.w3.eth.getTransactionCount(self.w3.eth.defaultAccount)
+        txn = {
+            'nonce': nonce,
+            'to': to_address,
+            'value': value,
+            'gas': 21000,
+            'gasPrice': self.w3.eth.gasPrice
+        }
+        signed_txn = self.w3.eth.account.signTransaction(txn, private_key)
+        txn_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
+        return txn_hash.hex()
 
-def get_solana_balance(endpoint, publicKey):
-    result = interact_with_solana(endpoint, '/account', {'publicKey': publicKey})
-    if 'error' in result:
-        return 0
-    else:
-        return int(result['result']['lamports'])
+    def get_block_number(self):
+        return self.w3.eth.blockNumber
 
-
-def send_solana_transaction(endpoint, transaction):
-    result = interact_with_solana(endpoint, '/tx', {'transaction': transaction})
-    return result
-
-
+    def set_default_account(self, address):
+        self.w3.eth.defaultAccount = address
