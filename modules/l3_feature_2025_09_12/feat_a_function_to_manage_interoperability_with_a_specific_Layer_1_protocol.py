@@ -1,33 +1,22 @@
-from web3 import Web3
+import requests
 
-class Layer1Interop:
-    def __init__(self, provider_url, contract_address, abi):
-        self.w3 = Web3(Web3.HTTPProvider(provider_url))
-        self.contract = self.w3.eth.contract(address=contract_address, abi=abi)
+def interact_with_solana(rpc_url, action, params):
+    headers = {'Content-Type': 'application/json'}
+    payload = {'jsonrpc': '2.0', 'id': 1, 'method': action, 'params': params}
+    response = requests.post(rpc_url, json=payload, headers=headers)
+    response.raise_for_status()
+    return response.json()['result']
 
-    def get_balance(self, address):
-        return self.contract.functions.getBalance(address).call()
+def get_solana_account_balance(rpc_url, address):
+    return interact_with_solana(rpc_url, 'getBalance', [address, {"commitment": "finalized"}])
 
-    def transfer(self, to_address, amount, private_key):
-        nonce = self.w3.eth.getTransactionCount(self.w3.toChecksumAddress(self.w3.eth.accounts[0]))
-        txn = self.contract.functions.transfer(to_address, amount).buildTransaction({
-            'chainId': self.w3.eth.chain_id,
-            'gas': 3000000,
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': nonce,
-        })
-        signed_txn = self.w3.eth.account.signTransaction(txn, private_key)
-        tx_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
-        return self.w3.toHex(tx_hash)
+def send_solana_transaction(rpc_url, transaction):
+    return interact_with_solana(rpc_url, 'sendTransaction', [transaction])
 
-    def approve(self, spender, amount, private_key):
-        nonce = self.w3.eth.getTransactionCount(self.w3.toChecksumAddress(self.w3.eth.accounts[0]))
-        txn = self.contract.functions.approve(spender, amount).buildTransaction({
-            'chainId': self.w3.eth.chain_id,
-            'gas': 3000000,
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': nonce,
-        })
-        signed_txn = self.w3.eth.account.signTransaction(txn, private_key)
-        tx_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
-        return self.w3.toHex(tx_hash)
+
+def get_solana_block_height(rpc_url):
+    return interact_with_solana(rpc_url, 'getBlockHeight', [])
+
+
+def get_solana_block(rpc_url, slot):
+    return interact_with_solana(rpc_url, 'getBlock', [slot])
