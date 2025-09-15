@@ -1,20 +1,25 @@
 import hashlib
-from ellipticcurve.privateKey import PrivateKey
-from ellipticcurve.publicKey import PublicKey
+import secrets
 
-def verify_zk_proof(proof, public_key_bytes, message):
-    public_key = PublicKey.fromString(public_key_bytes)
+def verify_zk_proof(proof, public_key, commitment):
     r, s = proof
-    h = hashlib.sha256(message).digest()
-    try:
-        sig = public_key.verify(h, s, r)
-        return sig
-    except:
-        return False
+    c = hashlib.sha256(public_key + commitment + str(r)).hexdigest()
+    if int(c, 16) % 2**256 == (s - r) % 2**256:
+        return True
+    return False
 
-proof = (1234567890, 9876543210)
-public_key_bytes = b'\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01'
-message = b'This is a test message'
+# Example Usage
+public_key = secrets.token_bytes(32)
+commitment = secrets.token_bytes(32)
+r = secrets.randbits(256)
+s = int(hashlib.sha256(public_key + commitment + str(r)).hexdigest(), 16) + r
 
-verification_result = verify_zk_proof(proof, public_key_bytes, message)
-print(verification_result)
+proof = (r, s)
+
+is_valid = verify_zk_proof(proof, public_key, commitment)
+
+if is_valid:
+    print("Proof Verified")
+else:
+    print("Proof Invalid")
+
