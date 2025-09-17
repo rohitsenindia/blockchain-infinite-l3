@@ -2,24 +2,16 @@ import asyncio
 import websockets
 
 async def synchronize_state(l2_url, l3_url):
-    async with websockets.connect(l2_url) as l2_websocket, websockets.connect(l3_url) as l3_websocket:
+    async with websockets.connect(l2_url) as l2_socket, websockets.connect(l3_url) as l3_socket:
         while True:
-            l2_state = await l2_websocket.recv()
+            l2_state = await l2_socket.recv()
             try:
-                await l3_websocket.send(l2_state)
-                ack = await l3_websocket.recv()
-                if ack != "ACK":
-                    raise Exception("Synchronization failed")
-            except websockets.exceptions.ConnectionClosed:
-                print("Layer 3 connection lost. Retrying...")
-                await asyncio.sleep(5)
-            except Exception as e:
-                print(f"Synchronization error: {e}")
+                l3_state = await asyncio.wait_for(l3_socket.recv(), timeout=1)
+                if l2_state != l3_state:
+                    await l3_socket.send(l2_state)
+            except asyncio.TimeoutError:
+                await l3_socket.send(l2_state)
+            except websockets.exceptions.ConnectionClosedOK:
                 break
 
-async def main():
-    await synchronize_state("ws://l2_node:8080", "ws://l3_node:8081")
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
+asyncio.run(synchronize_state("ws://l2_node:8080", "ws://l3_node:8081"))
