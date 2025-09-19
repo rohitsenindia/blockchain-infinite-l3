@@ -1,32 +1,39 @@
-from eth_typing import Address
+from eth_typing import Address, ChecksumAddress
+from web3 import Web3
 
 class FeeManager:
-    def __init__(self, owner: Address, fee_amount: int):
-        self.owner = owner
-        self.fee_amount = fee_amount
-        self.total_fees_collected = 0
+    def __init__(self, w3: Web3, contract_address: ChecksumAddress):
+        self.w3 = w3
+        with open('fee_manager_abi.json', 'r') as f:
+            abi = json.load(f)
+        self.contract = w3.eth.contract(address=contract_address, abi=abi)
 
-    def set_fee(self, new_fee_amount: int):
-        if msg.sender != self.owner:
-            raise Exception("Only the owner can set the fee amount.")
-        self.fee_amount = new_fee_amount
+    def set_fee(self, new_fee: int):
+        tx_hash = self.contract.functions.setFee(new_fee).transact({'from': self.w3.eth.accounts[0]})
+        self.w3.eth.waitForTransactionReceipt(tx_hash)
+        return tx_hash
 
-    def pay_fee(self):
-        if msg.value < self.fee_amount:
-            raise Exception("Insufficient fee amount.")
-        self.total_fees_collected += self.fee_amount
-        send(self.owner, self.fee_amount)
+    def get_fee(self) -> int:
+        return self.contract.functions.getFee().call()
 
-    def get_total_fees(self) -> int:
-        return self.total_fees_collected
+    def pay_fee(self, payer: Address) -> str:
+      tx_hash = self.contract.functions.payFee().transact({'from': payer})
+      self.w3.eth.waitForTransactionReceipt(tx_hash)
+      return tx_hash
 
-    def withdraw_fees(self):
-        if msg.sender != self.owner:
-            raise Exception("Only the owner can withdraw fees.")
-        amount_to_withdraw = self.total_fees_collected
-        self.total_fees_collected = 0
-        send(self.owner, amount_to_withdraw)
+    def get_fee_balance(self) -> int:
+      return self.contract.functions.getFeeBalance().call()
 
-    def get_fee_amount(self) -> int:
-        return self.fee_amount
+
+import json
+# ... (Assume w3 instance and contract address are available) ...
+fee_manager = FeeManager(w3, contract_address)
+new_fee = 10**18 # 1 ETH
+fee_manager.set_fee(new_fee)
+current_fee = fee_manager.get_fee()
+print(f"Current fee: {current_fee}")
+payer_address = "0x..." # Replace with a valid address
+fee_manager.pay_fee(payer_address)
+balance = fee_manager.get_fee_balance()
+print(f"Fee balance: {balance}")
 
