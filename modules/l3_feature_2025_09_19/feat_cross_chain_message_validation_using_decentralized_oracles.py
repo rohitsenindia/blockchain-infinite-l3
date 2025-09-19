@@ -1,11 +1,11 @@
-import requests
+import hashlib
+from typing import Dict, Any
 
-def validate_crosschain_message(message_hash, source_chain_id, target_chain_id, oracle_nodes):
-    valid_signatures = 0
-    threshold = len(oracle_nodes) // 2 + 1
-    for node in oracle_nodes:
-        url = f"{node}/validate?hash={message_hash}&source={source_chain_id}&target={target_chain_id}"
-        response = requests.get(url)
-        if response.status_code == 200 and response.json()['valid']:
-            valid_signatures += 1
-    return valid_signatures >= threshold
+def validate_crosschain_message(message: Dict[str, Any], oracle_responses: Dict[str, Any], threshold: int) -> bool:
+    message_hash = hashlib.sha256(str(message).encode()).hexdigest()
+    valid_responses = 0
+    for oracle, response in oracle_responses.items():
+        if response['message_hash'] == message_hash and response['valid']:
+            valid_responses += 1
+    return valid_responses >= threshold
+
