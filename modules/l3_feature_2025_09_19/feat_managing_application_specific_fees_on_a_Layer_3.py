@@ -1,39 +1,35 @@
-from eth_typing import Address, ChecksumAddress
+from eth_account import Account
 from web3 import Web3
 
-class FeeManager:
-    def __init__(self, w3: Web3, contract_address: ChecksumAddress):
-        self.w3 = w3
-        with open('fee_manager_abi.json', 'r') as f:
-            abi = json.load(f)
-        self.contract = w3.eth.contract(address=contract_address, abi=abi)
+w3 = Web3(Web3.HTTPProvider('http://localhost:8545')) # Replace with your L3 provider
 
-    def set_fee(self, new_fee: int):
-        tx_hash = self.contract.functions.setFee(new_fee).transact({'from': self.w3.eth.accounts[0]})
-        self.w3.eth.waitForTransactionReceipt(tx_hash)
-        return tx_hash
+abi = [
+    {'inputs': [{'internalType': 'uint256', 'name': '_fee', 'type': 'uint256'}], 'name': 'setFee', 'outputs': [], 'stateMutability': 'nonpayable', 'type': 'function'},
+    {'inputs': [], 'name': 'getFee', 'outputs': [{'internalType': 'uint256', 'name': '', 'type': 'uint256'}], 'stateMutability': 'view', 'type': 'function'}
+]
 
-    def get_fee(self) -> int:
-        return self.contract.functions.getFee().call()
+contract_address = '0x...' # Replace with your deployed contract address
 
-    def pay_fee(self, payer: Address) -> str:
-      tx_hash = self.contract.functions.payFee().transact({'from': payer})
-      self.w3.eth.waitForTransactionReceipt(tx_hash)
-      return tx_hash
+contract = w3.eth.contract(address=contract_address, abi=abi)
 
-    def get_fee_balance(self) -> int:
-      return self.contract.functions.getFeeBalance().call()
+def set_fee(fee_amount, private_key):
+    account = Account.privateKeyToAccount(private_key)
+    nonce = w3.eth.getTransactionCount(account.address)
+    txn = contract.functions.setFee(fee_amount).buildTransaction({
+        'chainId': 1337, #Replace with your chain ID
+        'gas': 1000000,
+        'gasPrice': w3.toWei('1', 'gwei'),
+        'nonce': nonce
+    })
+    signed_txn = w3.eth.account.signTransaction(txn, private_key=private_key)
+    tx_hash = w3.eth.sendRawTransaction(signed_txn.rawTransaction)
+    return w3.toHex(tx_hash)
+
+def get_fee():
+    return contract.functions.getFee().call()
 
 
-import json
-# ... (Assume w3 instance and contract address are available) ...
-fee_manager = FeeManager(w3, contract_address)
-new_fee = 10**18 # 1 ETH
-fee_manager.set_fee(new_fee)
-current_fee = fee_manager.get_fee()
-print(f"Current fee: {current_fee}")
-payer_address = "0x..." # Replace with a valid address
-fee_manager.pay_fee(payer_address)
-balance = fee_manager.get_fee_balance()
-print(f"Fee balance: {balance}")
+private_key = '...' # Replace with your private key
+set_fee(100, private_key)
+print(f"Fee set successfully: {get_fee()}")
 
