@@ -1,19 +1,20 @@
 import hashlib
-from py_ecc.bls import G2ProofOfPossession, verify_signature
+import secrets
 
-def verify_rollup_proof(proof, pubkey, message):
-    try:
-        vk = G2ProofOfPossession(pubkey)
-        return verify_signature(vk, message, proof)
-    except Exception as e:
-        return False
+def verify_zk_proof(proof, public_key, commitment, challenge):
+    gamma = int.from_bytes(proof[:32], 'big')
+    z = int.from_bytes(proof[32:64], 'big')
+    c = hashlib.sha256((public_key + commitment + challenge).encode()).hexdigest()
+    left = (gamma * pow(2, 256, 10**10) + int(c, 16)) % (10**10)
+    right = pow(z,2,10**10)
+    return left == right
 
 
-# Example Usage (replace with actual data)
-proof = b'simulated_zk_proof'
-pubkey = b'simulated_pubkey'
-message = hashlib.sha256(b'rollup_transaction_data').digest()
+proof = secrets.token_bytes(64)
+public_key = "some_public_key"
+commitment = "some_commitment"
+challenge = "some_challenge"
 
-is_valid = verify_rollup_proof(proof, pubkey, message)
-print(f"Proof verification result: {is_valid}")
+verification_result = verify_zk_proof(proof, public_key, commitment, challenge)
 
+print(verification_result)
