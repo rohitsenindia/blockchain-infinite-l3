@@ -1,32 +1,26 @@
-from hashlib import sha256
+import hashlib
 from ellipticcurve.privateKey import PrivateKey
+from ellipticcurve.publicKey import PublicKey
 
-def verify_zk_proof(proof, public_key, commitment, challenge):
+def verify_zk_proof(tx, proof, vk):
+    h = hashlib.sha256()
+    h.update(tx.encode())
+    tx_hash = h.digest()
+
     try:
-        priv_key = PrivateKey()
-        priv_key.publicKey().toString()
-        r = int.from_bytes(proof[:32], 'big')
-        s = int.from_bytes(proof[32:64], 'big')
-        v = int.from_bytes(proof[64:65], 'big')
-        
-        assert v == 27 or v == 28
-        
-        sig = (r,s,v)
-        
-        message = sha256(commitment.encode()).digest()
-        
-        verified = priv_key.verify(sig,message)
+        pk = PublicKey.from_point(vk['x'], vk['y'], curve='secp256k1')
+        sig = proof['signature']
+        r = proof['r']
+        s = proof['s']
 
-        return verified
+        return pk.verify(tx_hash, sig) and pk.verify_schnorr(tx_hash, r, s)
 
-    except Exception as e:
+    except (ValueError, KeyError, TypeError):
         return False
 
-# Example usage (replace with actual data):
-proof = bytes.fromhex("...") # Replace with your proof data
-public_key = "04..." # Replace with the public key
-commitment = "some commitment"
-challenge = "some challenge"
+tx = "TransactionData"
+proof = {'signature': b'some_signature', 'r': b'some_r', 's': b'some_s'}
+vk = {'x': b'some_x', 'y': b'some_y'}
 
-result = verify_zk_proof(proof, public_key, commitment, challenge)
-print(f"ZK-proof verification: {result}")
+is_valid = verify_zk_proof(tx, proof, vk)
+print(is_valid)
