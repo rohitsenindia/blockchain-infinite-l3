@@ -1,15 +1,32 @@
-import hashlib
+from hashlib import sha256
+from ellipticcurve.privateKey import PrivateKey
 
-def verify_zk_proof(proof, public_data, circuit_params):
-    h = hashlib.sha256()
-    h.update(proof + public_data + circuit_params.encode())
-    digest = h.hexdigest()
-    return digest == circuit_params.split(':')[1]
+def verify_zk_proof(proof, public_key, commitment, challenge):
+    try:
+        priv_key = PrivateKey()
+        priv_key.publicKey().toString()
+        r = int.from_bytes(proof[:32], 'big')
+        s = int.from_bytes(proof[32:64], 'big')
+        v = int.from_bytes(proof[64:65], 'big')
+        
+        assert v == 27 or v == 28
+        
+        sig = (r,s,v)
+        
+        message = sha256(commitment.encode()).digest()
+        
+        verified = priv_key.verify(sig,message)
 
-proof = "a_valid_zk_proof"
-public_data = "transaction_data"
-circuit_params = "circuit_id:a_valid_hash"
+        return verified
 
-is_valid = verify_zk_proof(proof, public_data, circuit_params)
+    except Exception as e:
+        return False
 
-print(is_valid)
+# Example usage (replace with actual data):
+proof = bytes.fromhex("...") # Replace with your proof data
+public_key = "04..." # Replace with the public key
+commitment = "some commitment"
+challenge = "some challenge"
+
+result = verify_zk_proof(proof, public_key, commitment, challenge)
+print(f"ZK-proof verification: {result}")
