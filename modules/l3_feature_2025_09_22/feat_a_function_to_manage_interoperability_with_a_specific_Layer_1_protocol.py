@@ -1,26 +1,27 @@
-import requests
+from web3 import Web3
 
-class Layer1Bridge:
-    def __init__(self, api_url):
-        self.api_url = api_url
+class Layer1Interop:
+    def __init__(self, provider_url, contract_address, abi):
+        self.w3 = Web3(Web3.HTTPProvider(provider_url))
+        self.contract = self.w3.eth.contract(address=contract_address, abi=abi)
 
     def get_balance(self, address):
-        response = requests.get(f"{self.api_url}/balance/{address}")
-        response.raise_for_status()
-        return response.json()['balance']
+        return self.contract.functions.balanceOf(address).call()
 
-    def send_transaction(self, from_address, to_address, amount, private_key):
-        payload = {
-            'from': from_address,
-            'to': to_address,
-            'amount': amount,
-            'private_key': private_key
+    def transfer(self, to_address, amount, private_key):
+        nonce = self.w3.eth.getTransactionCount(self.w3.toChecksumAddress(self.w3.eth.defaultAccount))
+        transaction = {
+            'nonce': nonce,
+            'to': self.w3.toChecksumAddress(to_address),
+            'value': amount,
+            'gas': 2000000,
+            'gasPrice': self.w3.eth.gasPrice,
         }
-        response = requests.post(f"{self.api_url}/transaction", json=payload)
-        response.raise_for_status()
-        return response.json()['tx_hash']
+        signed_txn = self.w3.eth.account.signTransaction(transaction, private_key)
+        txn_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
+        return self.w3.eth.waitForTransactionReceipt(txn_hash)
 
-    def get_transaction_status(self, tx_hash):
-        response = requests.get(f"{self.api_url}/transaction/{tx_hash}")
-        response.raise_for_status()
-        return response.json()['status']
+    def get_transaction_receipt(self, txn_hash):
+        return self.w3.eth.getTransactionReceipt(txn_hash)
+
+
