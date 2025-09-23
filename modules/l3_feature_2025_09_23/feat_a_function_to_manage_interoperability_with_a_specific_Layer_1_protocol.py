@@ -1,22 +1,36 @@
-from web3 import Web3
+import requests
 
-class Layer1Bridge:
-    def __init__(self, provider_url, contract_address, abi):
-        self.w3 = Web3(Web3.HTTPProvider(provider_url))
-        self.contract = self.w3.eth.contract(address=contract_address, abi=abi)
-
-    def transfer(self, recipient, amount):
-        txn = self.contract.functions.transfer(recipient, amount).buildTransaction({
-            'nonce': self.w3.eth.getTransactionCount(self.w3.eth.defaultAccount),
-            'gas': 1000000,
-            'gasPrice': self.w3.eth.gasPrice
-        })
-        signed_txn = self.w3.eth.account.signTransaction(txn, private_key='YOUR_PRIVATE_KEY')
-        tx_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction)
-        return self.w3.toHex(tx_hash)
+class Layer1Interop:
+    def __init__(self, api_url):
+        self.api_url = api_url
 
     def get_balance(self, address):
-        return self.contract.functions.balanceOf(address).call()
+        response = requests.get(f"{self.api_url}/balance/{address}")
+        response.raise_for_status()
+        return response.json()["balance"]
 
-    def get_allowance(self, owner, spender):
-        return self.contract.functions.allowance(owner, spender).call()
+    def send_transaction(self, sender, recipient, amount, private_key):
+        payload = {
+            "sender": sender,
+            "recipient": recipient,
+            "amount": amount,
+            "signature": self._sign_transaction(private_key, sender, recipient, amount)
+        }
+        response = requests.post(f"{self.api_url}/transaction", json=payload)
+        response.raise_for_status()
+        return response.json()["transaction_hash"]
+
+    def _sign_transaction(self, private_key, sender, recipient, amount):
+        # Replace with actual signing logic using appropriate library
+        # This is a placeholder
+        return "mock_signature"
+
+    def get_transaction_receipt(self, transaction_hash):
+        response = requests.get(f"{self.api_url}/transaction/{transaction_hash}")
+        response.raise_for_status()
+        return response.json()
+
+    def get_block_by_height(self, block_height):
+      response = requests.get(f"{self.api_url}/block/{block_height}")
+      response.raise_for_status()
+      return response.json()
