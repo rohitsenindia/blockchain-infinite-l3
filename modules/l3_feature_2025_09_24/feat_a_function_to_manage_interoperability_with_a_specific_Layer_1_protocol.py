@@ -1,30 +1,32 @@
-import requests
+from web3 import Web3
 
-class Layer1Interop:
-    def __init__(self, api_url):
-        self.api_url = api_url
+class Layer1Bridge:
+    def __init__(self, provider_url, contract_address, abi):
+        self.w3 = Web3(Web3.HTTPProvider(provider_url))
+        self.contract = self.w3.eth.contract(address=contract_address, abi=abi)
 
-    def get_balance(self, address):
-        response = requests.get(f"{self.api_url}/balance/{address}")
-        response.raise_for_status()
-        return response.json()["balance"]
+    def get_token_balance(self, address, token_address=None):
+        if token_address:
+            return self.contract.functions.balanceOf(address, token_address).call()
+        else:
+            return self.contract.functions.balanceOf(address).call()
 
-    def send_transaction(self, from_address, to_address, amount, private_key):
-        payload = {
-            "from": from_address,
-            "to": to_address,
-            "amount": amount,
-            "signature": self._sign_transaction(private_key, from_address, to_address, amount)
-        }
-        response = requests.post(f"{self.api_url}/transaction", json=payload)
-        response.raise_for_status()
-        return response.json()["tx_hash"]
-
-    def _sign_transaction(self, private_key, from_address, to_address, amount):
-        # Placeholder for actual signature generation; replace with appropriate library
-        return f"signature_{private_key}_{from_address}_{to_address}_{amount}"
-
-    def get_transaction_status(self, tx_hash):
-        response = requests.get(f"{self.api_url}/transaction/{tx_hash}")
-        response.raise_for_status()
-        return response.json()["status"]
+    def transfer_tokens(self, recipient, amount, token_address=None, private_key=None):
+        nonce = self.w3.eth.getTransactionCount(self.w3.eth.accounts[0])
+        if token_address:
+            tx = self.contract.functions.transfer(recipient, amount, token_address).buildTransaction({
+                'chainId': self.w3.eth.chain_id,
+                'gas': 1000000,
+                'gasPrice': self.w3.eth.gasPrice,
+                'nonce': nonce,
+            })
+        else:
+            tx = self.contract.functions.transfer(recipient, amount).buildTransaction({
+                'chainId': self.w3.eth.chain_id,
+                'gas': 1000000,
+                'gasPrice': self.w3.eth.gasPrice,
+                'nonce': nonce,
+            })
+        signed_tx = self.w3.eth.account.signTransaction(tx, private_key=private_key)
+        tx_hash = self.w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return self.w3.toHex(tx_hash)
