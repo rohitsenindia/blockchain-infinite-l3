@@ -30,7 +30,3 @@ This repo aims to **explore these ideas in code**.
 ✔️ **AI-suggested protocol upgrades** (auto commits by Gemini API)  
 ✔️ **Adaptive gas fee markets** based on usage patterns  
 ✔️ **Self-healing L3 nodes** that detect and fix consensus drift  
-
----
-
-## 📂 Project Structure
